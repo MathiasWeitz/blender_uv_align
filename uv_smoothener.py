@@ -14,17 +14,16 @@
 #  along with this program; if not, write to the Free Software Foundation,
 #  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
-# ##### END GPL LICENSE BLOCK #####
+# ##### END GPL LICENSE BLOCK ##### 
 
 bl_info = {
-	'name': "Aligning UV-coords",
+	'name': "UV-snap",
 	'author': "Mathias Weitz",
-	'version': (1, 0, 4),
-	'blender': (2, 7, 2),
-	'api': 52859,
+	'version': (1, 1, 0),
+	'blender': (2, 7, 4),
 	'location': "IMAGE_EDITOR > UI",
-	'description': "various tricks on UV",
-	'category': 'UV'}
+	'description': "snap, align and retopo on UV",
+	'category': 'Material'}
 	
 import bpy 
 from bpy.props import *
