@@ -624,6 +624,8 @@ def getUVLoops(me):
 			#print ('****')
 			# the UV-indices along one side of the selected edges,
 			# these can be significant more than the vertices because one vertice can have many uv-verts
+			#
+			# setting the starting parameters
 			startVert,nextVert = sortedSelected[0], sortedSelected[1]
 			startUVVert, nextUVVert = getUVVert(face, startVert), getUVVert(face, nextVert)
 			result['map'][startUVVert] = startVert
@@ -643,54 +645,63 @@ def getUVLoops(me):
 					for nextEdge, nextFaces in edgeToFace.items():
 						ev = nextEdge.split(',')
 						ev0,ev1 = int(ev[0]),int(ev[1])
+						# classifying the next edge that is
+						#   1 edge of the actual face
+						#   2 has one vert on the marked line
 						# the next Face with one end of the edge is the next vert on the selected path
-						if (ev0 == nextVert or ev1 == nextVert) and (nextFaces[0] == actFace or nextFaces[1] == actFace):
-							# now eleminate the edge that is the selected path
-							idSelEdge = twoId(ev0,ev1)
-							oppVert = ev0
-							if nextVert == ev0:
-								oppVert = ev1
-							#print ('?edge =', idSelEdge, ', oppVert =' , oppVert , targetVert)
-							if idSelEdge in edgeSelected:
-								# do not cross the line
-								if oppVert == targetVert:
-									# but move along the line
-									#print ('next Segment - act Face:', actFace.index, ', lim Verts:', ev0, ev1 )
-									b = True
-									segmentCounter += 1
-									uvVert1, uvVert2 = getUVVert(actFace, nextVert), getUVVert(actFace, targetVert)
-									if uvVert1 != uvVerts[-1]:
-										uvVerts.append(uvVert1)
-										result['map'][uvVert1] = nextVert
-									if uvVert2 != uvVerts[-1]:
-										uvVerts.append(uvVert2)
-										result['map'][uvVert2] = targetVert
-							else:
-								# edge has on point on next Vert
-								oppFace = nextFaces[0]
-								if actFace.index == nextFaces[0].index:
-									oppFace = nextFaces[1]
-								# to compare visitedFaces is necessary not to go the same way back
-								if oppFace.index not in visitedFaces:
-									# move to next face
-									#print ('actFace:', actFace.index, ', oppFace:', oppFace.index, ', visitedFaces:', visitedFaces)
-									oppVert = ev0
-									if nextVert == ev0:
-										oppVert = ev1
-									# now we have a winner
-									b = True
-									actFace = oppFace
-									visitedFaces.append(actFace.index)
-									nextUVVert = getUVVert(actFace, nextVert)
-									uvVerts.append(nextUVVert)
-									result['map'][nextUVVert] = nextVert
-									#print ('nextVerts: ', ev0,ev1, ', oppVert:', oppVert, ', nextVert:', nextVert, ', targetVert:', targetVert )
+						if ev0 == nextVert or ev1 == nextVert:
+							if nextFaces[0] == actFace or (len(nextFaces) == 2 and nextFaces[1] == actFace):
+								# now eleminate the edge that is the selected path
+								idSelEdge = twoId(ev0,ev1)
+								oppVert = ev0
+								if nextVert == ev0:
+									oppVert = ev1
+								#print ('?edge =', idSelEdge, ', oppVert =' , oppVert , targetVert)
+								if idSelEdge in edgeSelected:
+									# do not cross the line
 									if oppVert == targetVert:
-										# reached the next segment
+										# but move along the line
+										#print ('next Segment - act Face:', actFace.index, ', lim Verts:', ev0, ev1 )
+										b = True
 										segmentCounter += 1
-										targetUVVert = getUVVert(actFace, targetVert)
-										uvVerts.append(targetUVVert)
-										result['map'][targetUVVert] = targetVert
+										uvVert1, uvVert2 = getUVVert(actFace, nextVert), getUVVert(actFace, targetVert)
+										if uvVert1 != uvVerts[-1]:
+											uvVerts.append(uvVert1)
+											result['map'][uvVert1] = nextVert
+										if uvVert2 != uvVerts[-1]:
+											uvVerts.append(uvVert2)
+											result['map'][uvVert2] = targetVert
+								else:
+									if len(nextFaces) != 2:
+										uvVerts = []
+										break
+									else:
+										# edge has on point on next Vert
+										oppFace = nextFaces[0]
+										if actFace.index == nextFaces[0].index:
+											oppFace = nextFaces[1]
+										# to compare visitedFaces is necessary not to go the same way back
+										if oppFace.index not in visitedFaces:
+											# move to next face
+											#print ('actFace:', actFace.index, ', oppFace:', oppFace.index, ', visitedFaces:', visitedFaces)
+											oppVert = ev0
+											if nextVert == ev0:
+												oppVert = ev1
+											# now we have a winner
+											b = True
+											actFace = oppFace
+											visitedFaces.append(actFace.index)
+											nextUVVert = getUVVert(actFace, nextVert)
+											uvVerts.append(nextUVVert)
+											result['map'][nextUVVert] = nextVert
+											#print ('nextVerts: ', ev0,ev1, ', oppVert:', oppVert, ', nextVert:', nextVert, ', targetVert:', targetVert )
+											if oppVert == targetVert:
+												# reached the next segment
+												segmentCounter += 1
+												targetUVVert = getUVVert(actFace, targetVert)
+												uvVerts.append(targetUVVert)
+												result['map'][targetUVVert] = targetVert
+			#print ('len(uvVerts)', len(uvVerts))
 			result['uv'].append(uvVerts)
 	result['verts'] = sortedSelected
 	#print ('result', result)
@@ -777,29 +788,29 @@ class UVLineZickZack(bpy.types.Operator):
 			verts2Elevation[loopVerts[i]] = h
 		
 		for uvsides in loop['uv']:
-			#print ('uvsides', uvsides)
-			uvStart, uvEnd = me.uv_layers.active.data[uvsides[0]].uv, me.uv_layers.active.data[uvsides[-1]].uv
-			uvlength = (uvEnd - uvStart).length
-			# the offsets on the uv-map
-			dx, dy = (uvEnd - uvStart).x, (uvEnd - uvStart).y
-			# the normalized orthogonal
-			hx, hy =dy / uvlength, -dx / uvlength
-			# print(uvStart, uvEnd, uvlength)
-			# print ('dx, dy', dx, dy)
-			for uvVertIndex in uvsides:
-				uvVert = me.uv_layers.active.data[uvVertIndex]
-				vert = loop['map'][uvVertIndex]
-				if vert in verts2Elevation:
-					# relative distance of the path on the esh
-					relLength = vertToDist[vert] / totalDistance
-					# height
-					h = amplitude * verts2Elevation[vert]
-					# print (uvVertIndex, vert, uvVert)
-					# print (vert, relLength, vertToDist[vert], h)
-					# absolute position on the UV-map
-					dxvu, dyuv = uvStart.x + relLength * dx + h * hx, uvStart.y + relLength * dy + h * hy
-					#print(dxvu, dyuv)
-					uvVert.uv.x, uvVert.uv.y = dxvu, dyuv
+			if 2 < len(uvsides):
+				uvStart, uvEnd = me.uv_layers.active.data[uvsides[0]].uv, me.uv_layers.active.data[uvsides[-1]].uv
+				uvlength = (uvEnd - uvStart).length
+				# the offsets on the uv-map
+				dx, dy = (uvEnd - uvStart).x, (uvEnd - uvStart).y
+				# the normalized orthogonal
+				hx, hy =dy / uvlength, -dx / uvlength
+				# print(uvStart, uvEnd, uvlength)
+				# print ('dx, dy', dx, dy)
+				for uvVertIndex in uvsides:
+					uvVert = me.uv_layers.active.data[uvVertIndex]
+					vert = loop['map'][uvVertIndex]
+					if vert in verts2Elevation:
+						# relative distance of the path on the esh
+						relLength = vertToDist[vert] / totalDistance
+						# height
+						h = amplitude * verts2Elevation[vert]
+						# print (uvVertIndex, vert, uvVert)
+						# print (vert, relLength, vertToDist[vert], h)
+						# absolute position on the UV-map
+						dxvu, dyuv = uvStart.x + relLength * dx + h * hx, uvStart.y + relLength * dy + h * hy
+						#print(dxvu, dyuv)
+						uvVert.uv.x, uvVert.uv.y = dxvu, dyuv
 			
 		#print('uv_data', me.uv_layers.active.data)
 		#print('len uv_data', len(me.uv_layers.active.data))
@@ -1102,7 +1113,7 @@ class UVTessellate(bpy.types.Operator):
 		
 		k = int(context.scene.uv_tessellate)
 		count = 0
-		acc = 5e-6
+		acc = 1e-2
 		vertices = {}
 		for i1 in range(k+1):
 			#self.report({"INFO"}, str(i1))
